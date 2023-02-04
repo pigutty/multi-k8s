@@ -1,0 +1,71 @@
+name: Deploy Frontend
+on:
+  push:
+    branches:
+      - main
+env:
+  DEV_IMAGE: pigutty/react-test
+  CLUSTER_LOCATION: us-central1-c
+  REPOSITORY: my-container
+  REPOSITORY_LOCATION: us-central1
+  CLUSTER: multi-cluster
+
+jobs:
+  build:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: 'actions/checkout@v3' 
+    
+    - name: authentication
+      uses: 'google-github-actions/auth@v1'
+      with:
+        workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{secrets.SERVICE_ACCOUNT}}
+    
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v0
+
+    - name: set project
+      run: gcloud config set project ${{secrets.PROJECT_ID}}
+
+    - name: set region
+      run: gcloud config set compute/region ${{env.CLUSTER_LOCATION}}
+
+    - name: get credentials
+      run: gcloud container clusters get-credentials ${{env.CLUSTER}}
+    
+    - name: Authorize Docker push
+      run: gcloud auth configure-docker ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev
+
+    - name: develop build
+      run: docker build -t ${{env.DEV_IMAGE}} -f ./client/Dockerfile.dev ./client
+
+    - name: test
+      run: docker run -e CI=true ${{env.DEV_IMAGE}} npm test
+
+    - name: production Build and push
+      run: |
+        docker build -t ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-client:latest -t ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-client:${{ github.sha }}  ./client
+        docker build -t ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-server:latest -t ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-server:${{ github.sha }} ./server
+        docker build -t ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-worker:latest -t ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-worker:${{ github.sha }} ./worker
+        docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-client:latest
+        docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-server:latest
+        docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-worker:latest
+        docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-client:${{ github.sha }}
+        docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-server:${{ github.sha }}
+        docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-worker:${{ github.sha }}
+
+    - name: create secret
+      run: |
+        kubectl create secret generic pgpassword --from-literal PGPASSWORD=${{secrets.PGPASSWORD}}
+
+    - name: deploy
+      run: |
+        kubectl apply -f k8s
+        kubectl set image deployments/server-deployment server=${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-server:${{ github.sha }}
+        kubectl set image deployments/client-deployment client=${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-client:${{ github.sha }}
+        kubectl set image deployments/worker-deployment worker=${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-worker:${{ github.sha }}
