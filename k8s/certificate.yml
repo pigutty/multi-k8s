@@ -1,0 +1,20 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: pigutty-com-tls
+spec:
+  secretName: pigutty-com
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: pigutty.com
+  dnsNames:
+    - pigutty.com
+    - www.pigutty.com
+  acme:
+    config:
+      - http01:
+          ingressClass: nginx
+        domains:
+          - pigutty.com
+          - www.pigutty.com
