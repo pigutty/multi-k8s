@@ -29,11 +29,11 @@ jobs:
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v0
 
-    - name: set project
-      run: gcloud config set project ${{secrets.PROJECT_ID}}
+    # - name: set project
+    #   run: gcloud config set project ${{secrets.PROJECT_ID}}
 
-    - name: set region
-      run: gcloud config set compute/region ${{env.CLUSTER_LOCATION}}
+    # - name: set region
+    #   run: gcloud config set compute/region ${{env.CLUSTER_LOCATION}}
 
     - name: get credentials
       run: gcloud container clusters get-credentials ${{env.CLUSTER}}
