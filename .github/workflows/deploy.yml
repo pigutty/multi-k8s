@@ -32,6 +32,12 @@ jobs:
     - name: Authorize Docker push
       run: gcloud auth configure-docker ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev
 
+    - name: Set up GKE credentials
+      uses: google-github-actions/get-gke-credentials@v0
+      with:
+        cluster_name: ${{ env.CLUSTER }}
+        location: ${{ env.CLUSTER_LOCATION }}
+
     - name: develop build
       run: docker build -t ${{env.DEV_IMAGE}} -f ./client/Dockerfile.dev ./client
 
@@ -49,19 +55,6 @@ jobs:
         docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-client:${{ github.sha }}
         docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-server:${{ github.sha }}
         docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-worker:${{ github.sha }}
-
-    # - name: set project
-    #   run: gcloud config set project ${{secrets.PROJECT_ID}}
-
-    # - name: set region
-    #   run: gcloud config set compute/region ${{env.CLUSTER_LOCATION}}
-
-    - name: get credentials
-      run: gcloud container clusters get-credentials ${{env.CLUSTER}}
-
-    # - name: create secret
-    #   run: |
-    #     kubectl create secret generic pgpassword --from-literal PGPASSWORD=${{secrets.PGPASSWORD}}
 
     - name: deploy
       run: |
