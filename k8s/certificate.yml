@@ -11,10 +11,3 @@ spec:
   dnsNames:
     - pigutty.com
     - www.pigutty.com
-  acme:
-    config:
-      - http01:
-          ingressClass: nginx
-        domains:
-          - pigutty.com
-          - www.pigutty.com
