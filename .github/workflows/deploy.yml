@@ -28,15 +28,6 @@ jobs:
     
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v0
-
-    # - name: set project
-    #   run: gcloud config set project ${{secrets.PROJECT_ID}}
-
-    # - name: set region
-    #   run: gcloud config set compute/region ${{env.CLUSTER_LOCATION}}
-
-    - name: get credentials
-      run: gcloud container clusters get-credentials ${{env.CLUSTER}}
     
     - name: Authorize Docker push
       run: gcloud auth configure-docker ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev
@@ -59,9 +50,18 @@ jobs:
         docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-server:${{ github.sha }}
         docker push ${{env.REPOSITORY_LOCATION}}-docker.pkg.dev/${{secrets.PROJECT_ID}}/${{env.REPOSITORY}}/multi-worker:${{ github.sha }}
 
-    - name: create secret
-      run: |
-        kubectl create secret generic pgpassword --from-literal PGPASSWORD=${{secrets.PGPASSWORD}}
+    # - name: set project
+    #   run: gcloud config set project ${{secrets.PROJECT_ID}}
+
+    # - name: set region
+    #   run: gcloud config set compute/region ${{env.CLUSTER_LOCATION}}
+
+    - name: get credentials
+      run: gcloud container clusters get-credentials ${{env.CLUSTER}}
+
+    # - name: create secret
+    #   run: |
+    #     kubectl create secret generic pgpassword --from-literal PGPASSWORD=${{secrets.PGPASSWORD}}
 
     - name: deploy
       run: |
